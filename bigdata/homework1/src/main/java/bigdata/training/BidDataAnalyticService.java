@@ -3,10 +3,7 @@ package bigdata.training;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -23,23 +20,26 @@ public class BidDataAnalyticService {
     private static final int TOP_100 = 100;
     private static final int SAMPLE_TOP_10 = 10;
 
-    private boolean islogSamples;
+    private HdfsDataProvider hdfsDataProvider;
+
+    private boolean isLogSamples;
     private Long logEveryNLine;
     private Map<String, Long> resultMap;
 
-    public BidDataAnalyticService(Map<String, Long> resultDstMap) {
-        this(false, 100_000L, resultDstMap);
+    public BidDataAnalyticService(final HdfsDataProvider hdfsDataProvider, final Map<String, Long> resultDstMap) {
+        this(hdfsDataProvider, false, 100_000L, resultDstMap);
     }
 
-    public BidDataAnalyticService(final boolean islogSamples, final Long logEveryNLine, final Map<String, Long> resultMap) {
-        this.islogSamples = islogSamples;
+    public BidDataAnalyticService(final HdfsDataProvider hdfsDataProvider, boolean isLogSamples, Long logEveryNLine, final Map<String, Long> resultMap) {
+        this.hdfsDataProvider = hdfsDataProvider;
+        this.isLogSamples = isLogSamples;
         this.logEveryNLine = logEveryNLine;
         this.resultMap = resultMap;
     }
 
-    public void processFile(final URL urlToFile) throws MalformedURLException {
-        LOG.info("Start working on " + urlToFile.toString());
-        try (ReadableByteChannel in = Channels.newChannel(urlToFile.openStream())) {
+    public void processFile(String urlToFile) throws IOException {
+        LOG.info("Start working on " + urlToFile);
+        try (ReadableByteChannel in = hdfsDataProvider.getReadableByteChannel(urlToFile)) {
             ByteBuffer buf = ByteBuffer.allocate(8192);
             List<String> data = new ArrayList<>();
             StringBuffer sb = new StringBuffer();
@@ -101,7 +101,7 @@ public class BidDataAnalyticService {
     }
 
     private void logSampleInfo(final int linesCount, final String line) {
-        if (islogSamples && linesCount % logEveryNLine == 0) {
+        if (isLogSamples && linesCount % logEveryNLine == 0) {
             LOG.debug("Lines count: " + linesCount);
             LOG.debug("Line sample:\n" + line);
             LOG.debug("Stats: ");
