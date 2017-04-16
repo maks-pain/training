@@ -16,7 +16,9 @@ import org.codehaus.jettison.json.JSONObject;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 import static bigdata.training.LongestWordJob.LongestWordsCounters.LONGEST_WORD_LENGTH;
@@ -33,19 +35,46 @@ public class LongestWordJob {
     public static class TokenizerMapper extends Mapper<Object, Text, IntWritable, Text> {
 
         private final static IntWritable LENGTH = new IntWritable(1);
-        private Text word = new Text();
+        private Set<String> maxWords = new HashSet<>();
+        private int maxLength = 0;
 
         public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
             StringTokenizer itr = new StringTokenizer(value.toString(), " \t\n\r\f.,;:\"\'#!?+()");
+
             while (itr.hasMoreTokens()) {
-                String token = itr.nextToken();
-                if (token.trim().length() > 0) {
-                    word.set(token);
-                    LENGTH.set(token.length() * -1); // to reverse shuffling
-                    context.write(LENGTH, word);
+                String token = itr.nextToken().trim();
+                int tokenLength = token.length();
+                if (tokenLength > maxLength) {
+                    maxWords.clear();
+                    maxWords.add(token.toLowerCase());
+                    maxLength = tokenLength;
+                }
+                if (tokenLength == maxLength) {
+                    maxWords.add(token.toLowerCase());
+                    maxLength = tokenLength;
                 }
             }
         }
+
+        public void run(Context context) throws IOException, InterruptedException {
+            this.setup(context);
+
+            try {
+                while (context.nextKeyValue()) {
+                    this.map(context.getCurrentKey(), context.getCurrentValue(), context);
+                }
+
+                LENGTH.set(maxLength * -1); // to reverse shuffling
+                for (String s : maxWords) {
+                    context.write(LENGTH, new Text(s));
+                }
+
+            } finally {
+                this.cleanup(context);
+            }
+
+        }
+
     }
 
     public static class IntSumReducer extends Reducer<IntWritable, Text, Text, NullWritable> {
@@ -75,7 +104,6 @@ public class LongestWordJob {
         Job job = Job.getInstance(conf, "Longest word");
         job.setJarByClass(LongestWordJob.class);
         job.setMapperClass(TokenizerMapper.class);
-//        job.setCombinerClass(IntSumReducer.class);
         job.setNumReduceTasks(1);
         job.setReducerClass(IntSumReducer.class);
         job.setOutputKeyClass(IntWritable.class);
