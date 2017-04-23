@@ -41,7 +41,6 @@ public class BidDataAnalyticService {
         LOG.info("Start working on " + urlToFile);
         try (ReadableByteChannel in = hdfsDataProvider.getReadableByteChannel(urlToFile)) {
             ByteBuffer buf = ByteBuffer.allocate(8192);
-            List<String> data = new ArrayList<>();
             StringBuffer sb = new StringBuffer();
 
             int linesCount = 0;

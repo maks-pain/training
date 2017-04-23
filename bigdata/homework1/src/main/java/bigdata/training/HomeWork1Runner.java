@@ -70,24 +70,19 @@ public class HomeWork1Runner {
             tmp.deleteOnExit();
             tmpErr.deleteOnExit();
 
-            ProcessBuilder processBuilder =
-                    new ProcessBuilder(path, "-cp", classpath,
-                            HomeWork1App.class.getName(), params
-                            , "-t", type.name().toLowerCase(), "-d", workingDirectory, "-f", String.join(",", files), "-o", "abc"
-                    )
-                            .redirectError(tmpErr)
-                            .redirectOutput(tmp);
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                    path, "-cp", classpath,
+                    HomeWork1App.class.getName(), params,
+                    "-t", type.name().toLowerCase(), "-d", workingDirectory, "-f", String.join(",", files), "-o", "abc"
+            )
+                    .redirectError(tmpErr)
+                    .redirectOutput(tmp);
+
             LOG.trace(processBuilder.command());
             Process process = processBuilder.start();
 
             int exitCode = process.waitFor();
-            final StringBuilder out = new StringBuilder();
-            try (final InputStream is = new FileInputStream(tmpErr)) {
-                int c;
-                while ((c = is.read()) != -1) {
-                    out.append((char) c);
-                }
-            }
+            StringBuilder out = getProcessResult(tmpErr);
             LOG.info("Task " + (exitCode == 0 ? "SUCCEED" : "FAILED") + "! Time spent: " + out.toString().trim() + " seconds");
         } catch (IOException | InterruptedException e) {
             LOG.error("Exception occurred while running task ", e);
@@ -95,6 +90,17 @@ public class HomeWork1Runner {
             if (tmp != null) tmp.delete();
             if (tmpErr != null) tmpErr.delete();
         }
+    }
+
+    private static StringBuilder getProcessResult(final File tmpErr) throws IOException {
+        final StringBuilder out = new StringBuilder();
+        try (final InputStream is = new FileInputStream(tmpErr)) {
+            int c;
+            while ((c = is.read()) != -1) {
+                out.append((char) c);
+            }
+        }
+        return out;
     }
 
     private enum ConnectionType {

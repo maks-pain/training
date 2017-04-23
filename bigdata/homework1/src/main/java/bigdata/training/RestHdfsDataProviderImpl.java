@@ -30,7 +30,7 @@ public class RestHdfsDataProviderImpl implements HdfsDataProvider {
             URL url = new URL("http://" + server + ":" + port + REST_PREFIX + hdfsFilePath + OPEN_OP);
             return Channels.newChannel(url.openStream());
         } catch (IOException e) {
-            LOG.error("Unhandlad exception: ", e);
+            LOG.error("Unhandled exception: ", e);
         }
 
         return null;
