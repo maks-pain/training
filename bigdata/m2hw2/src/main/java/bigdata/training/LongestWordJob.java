@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 
-import static bigdata.training.LongestWordJob.LongestWordsCounters.LONGEST_WORD_LENGTH;
+import static bigdata.training.LongestWordJob.LongestWordsCounters.WORDS_PROCESSED;
 
 /**
  * Created by Maksym_Panchenko on 4/12/2017.
@@ -29,30 +29,37 @@ import static bigdata.training.LongestWordJob.LongestWordsCounters.LONGEST_WORD_
 public class LongestWordJob {
 
     public enum LongestWordsCounters {
-        LONGEST_WORD_LENGTH
+        WORDS_PROCESSED
     }
 
     public static class TokenizerMapper extends Mapper<Object, Text, IntWritable, Text> {
 
         private final static IntWritable LENGTH = new IntWritable(1);
+        private final static Text WORD = new Text();
+        private static final int THRESHOLD = 250;
         private Set<String> maxWords = new HashSet<>();
         private int maxLength = 0;
 
         public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
             StringTokenizer itr = new StringTokenizer(value.toString(), " \t\n\r\f.,;:\"\'#!?+()");
+            Counter wordsCounter = context.getCounter(WORDS_PROCESSED);
 
             while (itr.hasMoreTokens()) {
+                wordsCounter.increment(1L);
                 String token = itr.nextToken().trim();
                 int tokenLength = token.length();
                 if (tokenLength > maxLength) {
                     maxWords.clear();
                     maxWords.add(token.toLowerCase());
                     maxLength = tokenLength;
-                }
-                if (tokenLength == maxLength) {
+                } else if (tokenLength == maxLength) {
                     maxWords.add(token.toLowerCase());
                     maxLength = tokenLength;
                 }
+            }
+            if (maxWords.size() > THRESHOLD) {
+                drainRecords(context);
+                maxWords.clear();
             }
         }
 
@@ -64,37 +71,45 @@ public class LongestWordJob {
                     this.map(context.getCurrentKey(), context.getCurrentValue(), context);
                 }
 
-                LENGTH.set(maxLength * -1); // to reverse shuffling
-                for (String s : maxWords) {
-                    context.write(LENGTH, new Text(s));
-                }
+                drainRecords(context);
 
             } finally {
                 this.cleanup(context);
             }
+        }
 
+        private void drainRecords(final Context context) throws IOException, InterruptedException {
+            LENGTH.set(maxLength * -1); // to reverse shuffling
+            for (String s : maxWords) {
+                WORD.set(s);
+                context.write(LENGTH, WORD);
+            }
         }
 
     }
 
     public static class IntSumReducer extends Reducer<IntWritable, Text, Text, NullWritable> {
 
-        public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
-            Counter counter = context.getCounter(LONGEST_WORD_LENGTH);
-            JSONObject jsn = new JSONObject();
-            int wordLength = key.get() * -1;
-            if (counter.getValue() <= wordLength) {
-                counter.setValue(wordLength);
+        private static final String JSN_LENGTH = "length";
+        private static final String JSN_WORDS = "words";
+        private long counter = 0;
+        private JSONObject jsn = new JSONObject();
 
+        public void reduce(IntWritable key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+            int wordLength = key.get() * -1;
+            if (counter <= wordLength) {
+                counter = wordLength;
                 try {
-                    jsn.put("length", wordLength);
+                    jsn.put(JSN_LENGTH, wordLength);
                     List<String> words = new ArrayList<>();
                     values.forEach(text -> words.add(text.toString()));
-                    jsn.put("words", words);
+                    jsn.put(JSN_WORDS, words);
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
                 context.write(new Text(jsn.toString()), null);
+                jsn.remove(JSN_LENGTH);
+                jsn.remove(JSN_WORDS);
             }
         }
     }
