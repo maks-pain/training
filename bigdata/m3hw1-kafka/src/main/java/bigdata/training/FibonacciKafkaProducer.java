@@ -14,7 +14,6 @@ import java.util.concurrent.Future;
 public class FibonacciKafkaProducer extends KafkaProducer<String, String> {
 
     private String topic;
-    private int partCount = 1;
 
     public FibonacciKafkaProducer(String topicName, final Properties props) {
         super(props);

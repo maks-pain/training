@@ -5,32 +5,23 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import java.util.Arrays;
-import java.util.Properties;
 
-public class FibonacciSumConsumer {
+/**
+ * Created by Maksym_Panchenko on 5/3/2017.
+ */
+public class FibonacciSumConsumerService implements Runnable {
 
-    public static void main(String[] args) throws Exception {
-        String topic;
-        int n;
-        if (args.length != 2) {
-            System.out.println("Usage: consumer <topic> <number>");
-            System.out.println("[!] Fallback to default values!");
-            topic = "homework";
-            n = 20;
-        } else {
-            topic = args[0].trim();
-            n = Integer.parseInt(args[1]);
-        }
+    private String topic;
+    private int n;
+    private KafkaConsumer<String, String> consumer;
 
-        Properties props = new Properties();
-        props.put("bootstrap.servers", "localhost:9092");
-        props.put("enable.auto.commit", "true");
-        props.put("group.id", "0");
-        props.put("auto.commit.interval.ms", "1000");
-        props.put("session.timeout.ms", "30000");
-        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(props);
+    public FibonacciSumConsumerService(final String topic, final int n, final KafkaConsumer<String, String> consumer) {
+        this.topic = topic;
+        this.n = n;
+        this.consumer = consumer;
+    }
+
+    public void run() {
 
         consumer.subscribe(Arrays.asList(topic));
         System.out.println("Subscribed to topic " + topic);

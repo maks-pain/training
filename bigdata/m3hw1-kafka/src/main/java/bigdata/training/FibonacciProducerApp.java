@@ -4,11 +4,6 @@ import java.util.Properties;
 
 public class FibonacciProducerApp {
 
-    public static long fibonacciFn(int n) {
-        if (n <= 1) return n;
-        else return fibonacciFn(n - 1) + fibonacciFn(n - 2);
-    }
-
     public static void main(String[] args) {
 
         String topicName;
@@ -24,15 +19,13 @@ public class FibonacciProducerApp {
             topicName = args[0].trim();
             n = Integer.parseInt(args[1]);
         }
+
         System.out.println("Going to produce " + n + " Fibonacci numbers to topic: " + topicName);
 
         FibonacciKafkaProducer producer = new FibonacciKafkaProducer(topicName, getProperties());
+        FibonacciProducerService fibonacciProducerService = new FibonacciProducerService(n, producer);
 
-        for (int i = 1; i <= n; i++) {
-            producer.send(fibonacciFn(i));
-            System.out.println("Send #:" + i + "\t:\t" + fibonacciFn(i));
-        }
-        producer.close();
+        fibonacciProducerService.run();
 
     }
 
