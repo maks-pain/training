@@ -6,6 +6,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
 import scala.math.BigDecimal.RoundingMode.HALF_UP
+import scala.util.Try
 
 object MotelsHomeRecommendation {
 
@@ -111,11 +112,7 @@ object MotelsHomeRecommendation {
     bidRequiredColIds.map(idx => line(idx)).toList
   }
 
-  def getDoubleOption(str: String): Option[Double] = try {
-    Some(str.toDouble)
-  } catch {
-    case _ => None
-  }
+  def getDoubleOption(str: String): Option[Double] = Try(str.toDouble).toOption
 
   def convertDate(str: String) = Constants.INPUT_DATE_FORMAT.parseDateTime(str).toString(Constants.OUTPUT_DATE_FORMAT)
 
@@ -151,20 +148,14 @@ object MotelsHomeRecommendation {
       .map(row => (row(Constants.MOTELS_HEADER.indexOf("MotelID")), row(Constants.MOTELS_HEADER.indexOf("MotelName"))))
   }
 
-  /**
-    * Task5:
-    * Join the bids with motel names and utilize EnrichedItem case class.
-    * Hint: When determining the maximum if the same price appears twice then keep the first entity you found
-    * with the given price.
-    */
   def getEnriched(bids: RDD[BidItem], motels: RDD[(String, String)]): RDD[EnrichedItem] = {
     val maxEnrichedItem: (EnrichedItem, EnrichedItem) => EnrichedItem = {
       case (item1, item2) => if (item1.price >= item2.price) item1 else item2
     }
-    bids.map(bi => (bi.motelId, bi))
+    bids.keyBy(bi => bi.motelId)
       .join(motels)
       .map { case (motelId, (bi, motelName)) => EnrichedItem(motelId, motelName, bi.bidDate, bi.loSa, bi.price) }
-      .keyBy(ei => ei.motelId + ei.bidDate)
+      .keyBy(ei => (ei.motelId, ei.bidDate))
       .reduceByKey(maxEnrichedItem)
       .map { case (_, ei) => ei }
 

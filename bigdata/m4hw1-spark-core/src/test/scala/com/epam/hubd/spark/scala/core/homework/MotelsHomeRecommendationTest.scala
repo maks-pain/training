@@ -8,11 +8,10 @@ import com.epam.hubd.spark.scala.core.homework.domain.BidItem
 import com.epam.hubd.spark.scala.core.util.RddComparator
 import com.holdenkarau.spark.testing.RDDComparisons
 import org.apache.hadoop.fs.Path
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
-import org.junit._
 import org.junit.Assert._
+import org.junit._
 import org.junit.rules.TemporaryFolder
 
 
@@ -132,7 +131,7 @@ class MotelsHomeRecommendationTest {
   }
 
 
-//  @Test
+  @Test
   def shouldFilterErrorsAndCreateCorrectAggregates() = {
 
     runIntegrationTest()
